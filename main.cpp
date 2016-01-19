@@ -9,7 +9,7 @@
 #include <algorithm>
 #include "suffix.hpp"
 #include "hamming.hpp"
-#define GENERATE time(NULL)
+#define GENERATE 1453218765
 
 using namespace std;
 #define N 5
@@ -50,7 +50,7 @@ inline char bitset_get(const BitSet& b, int i) {
 }
 
 inline BitSet bitset_merge(const BitSet& a, const BitSet& b) {
-	BitSet ham(a.first | b.first, a.second | b.second), ans = a;
+	BitSet ham(a.first | b.first, a.second | b.second), ans = ham;
 	for (int i = 0; i < L; ++i)
 		if (bitset_get(ham, i) == '.')
 			bitset_mask(ans, i, 15);
@@ -127,6 +127,40 @@ void add_pattern(int blanks) {
 
 }
 
+// TESTING
+
+string convert(const BitSet& b) {
+	ostringstream os;
+	os << b;
+	return os.str();
+}
+
+int underscore(const BitSet& b) {
+	int c = 0;
+	for (int i = 0; i < L; ++i)
+		if (bitset_get(b, i) == '_')
+			++c;
+
+	return c;
+}
+
+int _hamming(const BitSet& a, const BitSet& b) {
+	int c = 0;
+	for (int i = 0; i < L; ++i)
+		if (bitset_get(a, i) != bitset_get(b, i))
+			++c;
+	return c;
+}
+
+int str_hamming(const string& a, const string& b) {
+	int c = 0;
+	for (int i = 0; i < a.length(); ++i)
+		if (a[i] != b[i] && a[i] != '_' && b[i] != '_')
+			++c;
+
+	return c;
+}
+
 int main() {
 	acgt['A'] = 0;
 	acgt['C'] = 1;
@@ -146,7 +180,8 @@ int main() {
 	}
 
 	// 0) generate input
-	srand(GENERATE);
+	unsigned seed = GENERATE;
+	srand(seed);
 	for (int i = 0; i < N; ++i)
 		for (int j = 0; j < M; ++j)
 			switch (rand() % 4) {
@@ -243,5 +278,27 @@ int main() {
 	for (int i = 0; i <= D; ++i)
 		for (Set::iterator it = coll[i].begin(); it != coll[i].end(); ++it)
 			cout << *it << endl;
+
+	// test
+	for (int i = 0; i <= D; ++i)
+		for (Set::iterator it = coll[i].begin(); it != coll[i].end(); ++it) {
+			ostringstream os;
+			os << *it;
+			string a = os.str();
+			for (int i = 0; i < N; ++i) {
+				bool ok = false;
+				for (int j = L; j <= M; ++j) {
+					string b(S[i] + j - L, S[i] + j);
+					if (str_hamming(a, b) <= D) {
+						ok = true;
+						break;
+					}
+				}
+				if (!ok) {
+					cout << "WTF man " << *it << " " << ' ' << i << ' ' << seed << endl;
+					return 1;
+				}
+			}
+		}
 
 }
