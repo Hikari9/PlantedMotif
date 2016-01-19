@@ -9,12 +9,12 @@
 #include <algorithm>
 #include "suffix.hpp"
 #include "hamming.hpp"
-#define GENERATE 1453218765
+#define GENERATE time(NULL)
 
 using namespace std;
-#define N 5
-#define M 3500
-#define L 17
+#define N 20
+#define M 600
+#define L 12
 #define D 6
 
 typedef unsigned long long ull;
@@ -77,29 +77,27 @@ Set coll[D + 1];
 BitSet pattern;
 char pattern_buffer[L + 1];
 
-inline bool add_pattern_below(int blanks, const BitSet& b = pattern) {
-	bool added = false;
+inline bool add_pattern_below(int blanks) {
 	for (int i = 0; i < blanks; ++i)
+		for (Set::iterator it = coll[i].begin(); it != coll[i].end(); ++it)
+			if ((*it & pattern) == *it)
+				// match found
+				return true;
+	return false;
+}
+
+inline bool add_pattern_above(int blanks) {
+	bool match = false;
+	for (int i = D; i > blanks; --i)
 		for (Set::iterator it = coll[i].begin(); it != coll[i].end();)
-			if ((*it & b) == *it) {
+			if ((*it & pattern) == pattern) {
 				// match found
 				coll[i].erase(it++);
-				coll[blanks].insert(b);
-				added = true;
+				match = true;
 			} else {
 				++it;
 			}
-	return added;
-}
-
-inline bool add_pattern_above(int blanks, const BitSet& b = pattern) {
-	for (int i = D; i > blanks; --i)
-		for (Set::iterator it = coll[i].begin(); it != coll[i].end(); ++it)
-			if ((*it & pattern) == b) {
-				// match found
-				return true;
-			}
-	return false;
+	return match;
 }
 
 // add pattern to collection
@@ -224,7 +222,7 @@ int main() {
 	}
 
 	// 3) intersect all other motifs
-	for (int i = 2; i < N; ++i) {
+	for (int i = 2; i < 4; ++i) {
 		for (int I = D; I >= 0; --I) {
 			for (Set::iterator it = coll[I].begin(); it != coll[I].end();) {
 				pattern.first = pattern.second = 0;
@@ -238,29 +236,6 @@ int main() {
 							else {
 								BitSet b = bitset_merge(pattern, *it);
 								coll[I].erase(it++);
-								for (Set::iterator it2 = it; it2 != coll[I].end();) {
-									if ((*it2 & b) == *it2) {
-										// match found
-										if (it == it2) {
-											coll[I].erase(it2++);
-											it = it2;
-										} else {
-											coll[I].erase(it2++);
-										}
-									} else {
-										++it2;
-									}
-								}
-								for (int J = I + 1; J < h; ++J) {
-									for (Set::iterator it2 = coll[J].begin(); it2 != coll[J].end();) {
-										if ((*it2 & b) == *it2) {
-											// match found
-											coll[I].erase(it2++);
-										} else {
-											++it2;
-										}
-									}
-								}
 								coll[h].insert(b);
 							}
 							found = true;
@@ -268,16 +243,17 @@ int main() {
 						}
 					}
 				}
-				if (!found) coll[I].erase(it++);
+				if (!found) {
+					coll[I].erase(it++);
+				}
 			}
 		}
-		break;
 	}
 
 	// output motifs
 	for (int i = 0; i <= D; ++i)
 		for (Set::iterator it = coll[i].begin(); it != coll[i].end(); ++it)
-			cout << *it << endl;
+			cout << i << ' ' << *it << endl;
 
 	// test
 	for (int i = 0; i <= D; ++i)
@@ -295,7 +271,7 @@ int main() {
 					}
 				}
 				if (!ok) {
-					cout << "WTF man " << *it << " " << ' ' << i << ' ' << seed << endl;
+					cout << "WTF man " << *it << ' ' << S[i] << ' ' << i << ' ' << seed << endl;
 					return 1;
 				}
 			}
