@@ -2,6 +2,7 @@
 #define INCLUDE_SUFFIX 1
 
 #include <cstring>
+#include <algorithm>
 
 // uses radix sort
 namespace suffix {
@@ -26,7 +27,7 @@ namespace suffix {
 			sa[i] = i, pos[i] = s[i];
 		suffix_cmp cmp(n, pos);
 		for (cmp.gap = 1;; cmp.gap <<= 1) {
-			sort(sa, sa + n, cmp);
+			std::sort(sa, sa + n, cmp);
 			for (int i = 1; i < n; ++i)
 				tmp[i] = tmp[i - 1] + cmp(sa[i - 1], sa[i]);
 			for (int i = 0; i < n; ++i)
