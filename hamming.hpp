@@ -2,9 +2,9 @@
 #define INCLUDE_HAMMING
 
 namespace hamming {
-	short dp[1 << 16] = {-1};
+	int dp[1 << 16] = {-1};
 
-	inline int xor_distance(int x) {
+	inline int distance(unsigned x) {
 		if (dp[0] == -1) {
 			dp[0] = 0;
 			for (int i = 1; i < (1 << 16); ++i)
@@ -13,8 +13,8 @@ namespace hamming {
 		return dp[x >> 16] + dp[x & ((1 << 16) - 1)];
 	}
 
-	inline int distance(int a, int b) {
-		return xor_distance(a, b);
+	inline int distance(unsigned long long x) {
+		return distance((unsigned) (x >> 32)) + distance((unsigned) (x & ((1LL << 32) - 1)));
 	}
 }
 
