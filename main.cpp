@@ -5,6 +5,7 @@
 #include <ctime>
 #include <algorithm>
 #include "suffix.hpp"
+#include "hamming.hpp"
 #define GENERATE 0
 
 using namespace std;
@@ -39,10 +40,10 @@ int main() {
 		suffix_score[i] = suffix::get_suffix_score(s[i]),
 		order[i] = i;
 	sort(order, order + N, score_compare);
-
-	// test: output
 	for (int i = 0; i < N; ++i)
-		printf("%s %lld\n", s[order[i]], suffix_score[order[i]]);
+		S[i] = s[order[i]];
+
+	// 2) collect first two pair's motif pattern
 
 
 }
