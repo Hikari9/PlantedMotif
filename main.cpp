@@ -6,9 +6,11 @@
 #include <ctime>
 #include <bitset>
 #include <set>
+#include <vector>
 #include <algorithm>
 #include "suffix.hpp"
 #include "hamming.hpp"
+#include "double_int.hpp"
 #define GENERATE time(NULL)
 
 using namespace std;
@@ -16,55 +18,14 @@ using namespace std;
 #define M 600
 #define L 12
 #define D 6
-
 typedef unsigned long long ull;
-typedef pair<unsigned, ull> BitSet;
-typedef set<BitSet> Set;
+typedef double_int<unsigned, ull> term;
+typedef set<term> Set;
+#define foreach(iter, collection) for (Set::iterator iter = (collection).begin(), iter != (collection).end(); ++iter)
+#define oneach(iter, collection) for (Set::iterator iter = (collection).begin(), iter != (collection).end();)
 
-inline BitSet operator ^ (const BitSet& a, const BitSet& b) {
-	return BitSet(a.first ^ b.first, a.second ^ b.second);
-}
-
-inline BitSet operator & (const BitSet& a, const BitSet& b) {
-	return BitSet(a.first & b.first, a.second & b.second);
-}
-inline BitSet operator | (const BitSet& a, const BitSet& b) {
-	return BitSet(a.first | b.first, a.second | b.second);
-}
-
-inline void bitset_mask(BitSet& b, int i, unsigned mask) {
-	if (i == 16) b.first = mask;
-	else b.second |= ((ull)mask << (i * 4));
-}
-
-inline void bitset_append(BitSet& b, unsigned x) {
-	b.second = (b.second >> 4) | ((ull) b.first << 60);
-	b.first >>= 4;
-	bitset_mask(b, L - 1, x);
-}
-
-char acgt_convert[16];
-
-inline char bitset_get(const BitSet& b, int i) {
-	return i == 16 ? acgt_convert[b.first] : acgt_convert[(unsigned) ((b.second >> (i << 2)) & 15)];
-}
-
-inline BitSet bitset_merge(const BitSet& a, const BitSet& b) {
-	BitSet ham(a.first | b.first, a.second | b.second), ans = ham;
-	for (int i = 0; i < L; ++i)
-		if (bitset_get(ham, i) == '.')
-			bitset_mask(ans, i, 15);
-	return ans;
-}
-
-ostream& operator << (ostream& out, const BitSet& b) {
-	for (int i = 0; i < L; ++i)
-		out << bitset_get(b, i);
-	return out;
-}
-
-char s[N][M+1];
-char *S[N];
+char s[N][M+1], *S[N];
+char acgt_ch[] = "ACGT", acgt_4[16];
 int order[N], acgt[128];
 long long suffix_score[N];
 
@@ -72,36 +33,59 @@ bool score_compare(int i, int j) {
 	return suffix_score[i] > suffix_score[j];
 }
 
+char getchar(const term& b, int i) {
+	return acgt_4[b.get(i, 2)];
+}
+
+term merge(const term& a, const term& b) {
+	term ham(a | b), ans = ham;
+	for (int i = 0; i < L; ++i)
+		if (getchar(ham, i) == '.')
+			ans.set(i, 15, 2);
+	return ans;
+}
+
+string operator string(const term& b) {
+	string str;
+	for (int i = 0; i < L; ++i)
+		str.push_back(getchar(b, i));
+	return str;
+}
+
+ostream& operator << (ostream& out, const term& b) {
+	return out << string(b);
+}
+
 ull choose[L + 1][D + 1] = {1};
 Set coll[D + 1];
-BitSet pattern;
-char pattern_buffer[L + 1];
 
-inline bool add_pattern_below(int blanks) {
-	for (int i = 0; i < blanks; ++i)
-		for (Set::iterator it = coll[i].begin(); it != coll[i].end(); ++it)
-			if ((*it & pattern) == *it)
-				// match found
+bool check_patterns_below(int blanks, const term& pattern) {
+	for (int i = 0; i < blanks; ++i) {
+		foreach (it, coll[i]) {
+			((*it & pattern) == *it) {
 				return true;
+			}
+		}
+	}
 	return false;
 }
 
-inline bool add_pattern_above(int blanks) {
+bool remove_patterns_above(int blans, const term& pattern) {
 	bool match = false;
-	for (int i = D; i > blanks; --i)
-		for (Set::iterator it = coll[i].begin(); it != coll[i].end();)
+	for (int i = D; i > blanks; --i) {
+		oneach (it, coll[i]) {
 			if ((*it & pattern) == pattern) {
-				// match found
 				coll[i].erase(it++);
 				match = true;
 			} else {
 				++it;
 			}
+		}
+	}
 	return match;
 }
 
-// add pattern to collection
-void add_pattern(int blanks) {
+void add_pattern(int blanks, const term& pattern) {
 	
 	// check if current pattern is already there
 	if (coll[blanks].count(pattern)) return;
@@ -116,78 +100,89 @@ void add_pattern(int blanks) {
 
 	// heuristic ensures us that there is only one subset/superset pair at a given time
 	if (coll_below < coll_above) {
-		if (!add_pattern_below(blanks) && !add_pattern_above(blanks))
+		if (!check_patterns_below(blanks, pattern)) {
+			remove_patterns_above(blanks, pattern);
 			coll[blanks].insert(pattern);
+		}
 	} else {
-		if (!add_pattern_above(blanks) && !add_pattern_below(blanks))
+		if (remove_patterns_above(blanks, pattern) || !check_patterns_below(blanks, pattern)) {
 			coll[blanks].insert(pattern);
+		}
 	}
 
 }
 
-// TESTING
-
-string convert(const BitSet& b) {
-	ostringstream os;
-	os << b;
-	return os.str();
-}
-
-int underscore(const BitSet& b) {
+int _underscore(const term& b) {
 	int c = 0;
 	for (int i = 0; i < L; ++i)
-		if (bitset_get(b, i) == '_')
-			++c;
-
-	return c;
-}
-
-int _hamming(const BitSet& a, const BitSet& b) {
-	int c = 0;
-	for (int i = 0; i < L; ++i)
-		if (bitset_get(a, i) != bitset_get(b, i))
+		if (getchar(b, i) == '_')
 			++c;
 	return c;
 }
 
-int str_hamming(const string& a, const string& b) {
+int _underscore(const string& s) {
+	int c = 0;
+	for (int i = 0; i < L; ++i)
+		if (s[i] == '_')
+			++c;
+	return c;
+}
+
+int _hamming(const term& a, const term& b) {
+	int c = 0;
+	for (int i = 0; i < L; ++i)
+		if (getchar(a, i) != getchar(b, i))
+			++c;
+	return c;
+}
+
+int _hamming(const string& a, const string& b) {
 	int c = 0;
 	for (int i = 0; i < a.length(); ++i)
 		if (a[i] != b[i] && a[i] != '_' && b[i] != '_')
 			++c;
-
 	return c;
 }
 
-int main() {
+int _hamming_all(const string& a, const string& b) {
+	int c = 0;
+	for (int i = 0; i < a.length(); ++i)
+		if (a[i] != b[i])
+			++c;
+	return c;
+}
+
+int count_bits(const term& t) {
+	return hamming::count_bits(t.first) + hamming::count_bits(t.second);
+}
+
+void pregen() {
+	memset(acgt_4, '.', sizeof acgt_4);
 	acgt['A'] = 0;
 	acgt['C'] = 1;
 	acgt['G'] = 2;
 	acgt['T'] = 3;
-	memset(acgt_convert, '.', sizeof acgt_convert);
-	acgt_convert[1] = 'A';
-	acgt_convert[2] = 'C';
-	acgt_convert[4] = 'G';
-	acgt_convert[8] = 'T';
-	acgt_convert[15] = '_';
-
+	acgt_4[1] = 'A';
+	acgt_4[2] = 'C';
+	acgt_4[4] = 'G';
+	acgt_4[8] = 'T';
+	acgt_4[15] = '_';
 	for (int i = 1; i <= L; ++i) {
 		choose[i][0] = 1;
 		for (int j = 1; j <= D; ++j)
 			choose[i][j] = choose[i - 1][j - 1] + choose[i - 1][j];
 	}
+}
+
+int main() {
 
 	// 0) generate input
+	pregen();
 	unsigned seed = GENERATE;
 	srand(seed);
 	for (int i = 0; i < N; ++i)
 		for (int j = 0; j < M; ++j)
-			switch (rand() % 4) {
-				case 0: s[i][j] = 'A'; break;
-				case 1: s[i][j] = 'C'; break;
-				case 2: s[i][j] = 'G'; break;
-				case 3: s[i][j] = 'T'; break;
-			}
+			s[i][j] = acgt_ch[rand() % 4];
 
 	// 1) sort suffixes by score
 	for (int i = 0; i < N; ++i)
@@ -198,7 +193,6 @@ int main() {
 		S[i] = s[order[i]];
 
 	// 2) collect first two pair's motif pattern
-
 	ull lmer = 0;
 	ull mask = (1ULL << (L * 2)) - 1;
 	for (int j = 0; j < M;) {
@@ -210,11 +204,12 @@ int main() {
 				if (++k >= L) {
 					int h = hamming::distance(lmer ^ lmer2);
 					if (h <= D) {
-						pattern.first = pattern.second = 0;
-						for (int i = 0; i < L; ++i)
-							bitset_mask(pattern, i, S[0][j-L+i] == S[1][k-L+i] ? (1 << acgt[S[0][j-L+i]]) : 15);
-						// cout << h << ' ' << string(S[0] + (j - L), S[0] + j) << ' ' << string(S[1] + (k - L), S[1] + k) << ' ' << convert(pattern) << endl;
-						add_pattern(h);
+						term pattern;
+						for (int i = 0; i < L; ++i) {
+							int val = S[0][j-L+i] == S[1][k-L+i] ? (1 << acgt[S[0][j-L+i]]) : 15;
+							pattern.set(i, val, 2);
+						}
+						add_pattern(h, pattern);
 					}
 				}
 			}
@@ -222,27 +217,52 @@ int main() {
 	}
 
 	// 3) intersect all other motifs
+	for (int i = 2; i < N; ++i) {
+		for (int I = D; I >= 0; --I) {
+			oneach (it, coll[I]) {
+				term pattern;
+				int flag = 0;
+				vector< pair<int, pattern> > to_add;
+				for (int j = 0; j < M;) {
+					pattern >>= 4;
+					pattern.set(L - 1, (1 << acgt[S[i][j]]), 2);
+					if (++j >= L) {
+						int h = 
+					}
+				}
+			}
+		}
+	}
 	for (int i = 2; i < 4; ++i) {
 		for (int I = D; I >= 0; --I) {
-			for (Set::iterator it = coll[I].begin(); it != coll[I].end();) {
+			oneach (it, coll[I]) {
 				pattern.first = pattern.second = 0;
-				bool found = false;
+				vector<term> v;
+				bool keep = false;
 				for (int j = 0; j < M;) {
 					bitset_append(pattern, (1 << acgt[S[i][j]]));
 					if (++j >= L) {
-						int h = L - hamming::count_bits(pattern.first & it->first) - hamming::count_bits(pattern.second & it->second) + I;
+						int h = L + I - count_bits(pattern & *it);
 						if (h <= D) {
-							if (h == I) ++it;
-							else {
-								BitSet b = bitset_merge(pattern, *it);
-								coll[I].erase(it++);
-								coll[h].insert(b);
+							if (h == I) {
+								v.clear();
+								keep = true;
+								break;
 							}
-							found = true;
-							break;
+							else {
+								v.push_back(merge(pattern, *it));
+								flag = true;
+							}
 						}
 					}
 				}
+				if (v.size()) 
+				if (flag) {
+					coll[I].erase(it++);
+					to_ad
+				}
+				if (!(flag & 2)) coll[I].erase(it++);
+				else if (flag & 1)
 				if (!found) {
 					coll[I].erase(it++);
 				}
