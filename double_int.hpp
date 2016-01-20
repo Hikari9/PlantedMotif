@@ -111,6 +111,10 @@ struct double_int {
 		return out << bitset<(sizeof(T1) << 3)>(d.first) << ' ' << bitset<(sizeof(T2) << 3)>(d.second);
 	}
 
+	inline bool operator < (const double_int<T1, T2>& b) const {
+		return first < b.first || (first == b.first && second < b.second);
+	}
+
 };
 
 #endif /* INCLUDE_DOUBLE_INT */
