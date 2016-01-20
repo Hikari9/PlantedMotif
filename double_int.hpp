@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <bitset>
+#include "hamming.hpp"
 using namespace std;
 
 /*
@@ -31,12 +32,12 @@ struct double_int {
 	#undef binary_operation
 	#define binary_operation(op) \
 	template<class U1, class U2> \
-	inline friend double_int operator op (const double_int<U1, U2>& b) const { \
+	inline double_int operator op (const double_int<U1, U2>& b) const { \
 		return double_int<T1, T2>(first op b.first, second op b.second); \
 	} \
-	inline friend double_int operator op (const T2& b) const { \
+	inline double_int operator op (const T2& b) const { \
 		return double_int<T1, T2>(first, second op b); \
-	} \
+	}
 	binary_operation(|)
 	binary_operation(&)
 	binary_operation(^)
@@ -45,12 +46,12 @@ struct double_int {
 	// binary bit reassign operations
 	#define binary_operation(op) \
 	template<class U1, class U2> \
-	inline friend double_int& operator op (const double_int<U1, U2>& b) const { \
+	inline double_int& operator op (const double_int<U1, U2>& b) const { \
 		first op b.first; second op b.second; return *this; \
 	} \
-	inline friend double_int& operator op (const T2& b) const { \
+	inline double_int& operator op (const T2& b) const { \
 		second op b; return *this; \
-	} \
+	}
 	binary_operation(|=)
 	binary_operation(&=)
 	binary_operation(^=)
@@ -93,11 +94,11 @@ struct double_int {
 	}
 	inline double_int operator >> (int shift) const {
 		int bits = sizeof(T2) << 3;
-		return double_int(first >> shift, (second >> shift) | T2(first & ((T1(1) << shift) - 1));
+		return double_int(first >> shift, (second >> shift) | T2(first & ((T1(1) << shift) - 1)));
 	}
 	inline double_int& operator >> (int shift) {
 		int bits = sizeof(T2) << 3;
-		second = (second >> shift) | T2(first & ((T1(1) << shift) - 1);
+		second = (second >> shift) | T2(first & ((T1(1) << shift) - 1));
 		first >>= shift;
 		return *this;
 	}
@@ -125,9 +126,13 @@ struct double_int {
 	}
 	template<class U1, class U2>
 	inline bool operator == (const double_int<U1, U2>& b) const {
-
+		return first == b.first && second == b.second;
 	}
-
+	template<class U1, class U2>
+	inline bool operator != (const double_int<U1, U2>& b) const {
+		return first != b.first || second != b.second;
+	}
+	
 };
 
 #endif /* INCLUDE_DOUBLE_INT */
